@@ -2,95 +2,57 @@ import React from 'react';
 import { 
   Box, 
   Typography, 
-  Card,
-  CardContent
+  Container, 
+  Paper,
+  Button,
+  Avatar
 } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
+import PersonIcon from '@mui/icons-material/Person';
 
 const Dashboard: React.FC = () => {
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    navigate('/login');
+  };
+
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        Market Dashboard
-      </Typography>
-      <Box sx={{ 
-        display: 'flex', 
-        flexWrap: 'wrap', 
-        gap: 2 
-      }}>
-        {/* Stock Graph */}
-        <Card sx={{ width: '48%', minWidth: 300 }}>
-          <CardContent>
-            <Typography variant="h6">Stock Performance</Typography>
-            <Box sx={{ 
-              width: '100%', 
-              height: '200px', 
-              bgcolor: '#f5f5f5',
-              mt: 2,
-              display: 'flex',
-              alignItems: 'flex-end',
-              justifyContent: 'space-around'
-            }}>
-              {[30, 50, 70, 40, 60, 80].map((height, index) => (
-                <Box
-                  key={index}
-                  sx={{
-                    width: '30px',
-                    height: `${height}%`,
-                    bgcolor: '#1976d2'
-                  }}
-                />
-              ))}
-            </Box>
-          </CardContent>
-        </Card>
-
-        {/* Prediction */}
-        <Card sx={{ width: '48%', minWidth: 300 }}>
-          <CardContent>
-            <Typography variant="h6">Market Prediction</Typography>
-            <Box sx={{ 
-              height: '200px', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center',
-              mt: 2
-            }}>
-              <Typography variant="h6" color="primary">
-                Bullish Trend Expected
-              </Typography>
-            </Box>
-          </CardContent>
-        </Card>
-
-        {/* News */}
-        <Card sx={{ width: '48%', minWidth: 300 }}>
-          <CardContent>
-            <Typography variant="h6">Market News</Typography>
-            <Box sx={{ mt: 2 }}>
-              <Typography>• Market shows positive growth</Typography>
-              <Typography>• New regulations announced</Typography>
-              <Typography>• Tech sector leads gains</Typography>
-              <Typography>• Global markets stable</Typography>
-            </Box>
-          </CardContent>
-        </Card>
-
-        {/* China & India Markets */}
-        <Card sx={{ width: '48%', minWidth: 300 }}>
-          <CardContent>
-            <Typography variant="h6">China & India Markets</Typography>
-            <Box sx={{ mt: 2 }}>
-              <Typography>China: +2.5%</Typography>
-              <Typography>India: +1.8%</Typography>
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="subtitle2">Shanghai Composite: 3,450.67</Typography>
-                <Typography variant="subtitle2">Nifty 50: 18,234.50</Typography>
-              </Box>
-            </Box>
-          </CardContent>
-        </Card>
-      </Box>
-    </Box>
+    <Container maxWidth="sm">
+      <Paper 
+        elevation={3} 
+        sx={{ 
+          p: 4, 
+          mt: 8,
+          background: 'rgba(255, 255, 255, 0.9)',
+          backdropFilter: 'blur(10px)',
+        }}
+      >
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <Avatar sx={{ width: 80, height: 80, bgcolor: 'primary.main', mb: 2 }}>
+            <PersonIcon sx={{ fontSize: 40 }} />
+          </Avatar>
+          <Typography component="h1" variant="h4" sx={{ fontWeight: 600, mb: 2 }}>
+            Welcome to Dashboard
+          </Typography>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 4, textAlign: 'center' }}>
+            You have successfully logged in to your account.
+          </Typography>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleLogout}
+            sx={{ 
+              py: 1.5,
+              px: 4,
+              fontSize: '1rem',
+            }}
+          >
+            Logout
+          </Button>
+        </Box>
+      </Paper>
+    </Container>
   );
 };
 
