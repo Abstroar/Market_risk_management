@@ -26,7 +26,7 @@ STOCK_SYMBOLS = ["AAPL", "MSFT", "GOOG", "AMZN", "TSLA", "META", "NFLX", "NVDA"]
 def refresh_or_get_stock(symbol: str):
     today_date = datetime.now().date()
 
-    stock = collection.find_one({"symbol": symbol})
+    stock = collection.find_one({"symbol": symbol.upper()})
 
     if stock:
         stored_date = stock["date"].date()

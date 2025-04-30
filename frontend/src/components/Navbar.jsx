@@ -1,67 +1,60 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom'; // React Router for page navigation
-import './navbar.css'; // Import your navbar styles here
-import { searchStock } from '../api/search';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import logo from '../assets/Stock.png';
+import './Navbar.css';
 
-function Navbar({ isLoggedIn, onLogout }) {
+const Navbar = ({ isLoggedIn, onLogout }) => {
+  const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
-  const [searchSymbol, setSearchSymbol] = useState('');
-  
-  const handleSearchChange = (e) => {
-    setSearchSymbol(e.target.value);
-  };
-  
-  const handleSearchSubmit = async (e) => {
+
+  const handleSearch = (e) => {
     e.preventDefault();
-    try {
-      const stockData = await searchStock(searchSymbol);
-      console.log('Stock Data:', stockData);
-      
-      // Navigate to display page and pass stock data
-      navigate('/display', { state: { stockData } });
-    } catch (error) {
-      console.error('Error fetching stock:', error);
-      alert('Stock not found!');
+    if (searchQuery.trim()) {
+      navigate(`/dashboard?symbol=${searchQuery.trim().toUpperCase()}`);
+      setSearchQuery('');
     }
   };
-  
+
   return (
     <nav className="navbar">
       <div className="navbar-container">
-        {/* Logo / Home Link */}
-        <Link to="/" className="navbar-logo">
-          StockTracker
+        <Link to="/" className="navbar-brand">
+          <img src={logo} alt="StockTracker Logo" className="navbar-logo-img" />
+          <span className="navbar-logo-text">StockTracker</span>
         </Link>
 
-        {/* Search Bar */}
-        <form onSubmit={handleSearchSubmit} className="navbar-search">
-          <input 
-            type="text" 
-            placeholder="Search Stock..." 
-            value={searchSymbol} 
-            onChange={handleSearchChange} 
+        <form onSubmit={handleSearch} className="navbar-search">
+          <input
+            type="text"
+            placeholder="Search Stock..."
+            className="search-input"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <button type="submit">Search</button>
+          <button type="submit" className="search-button">
+            Search
+          </button>
         </form>
 
-        {/* Right Side - Links */}
-        <div className="navbar-links">
-          {!isLoggedIn ? (
-            <>
-              <Link to="/login" className="navbar-link">Login</Link>
-              <Link to="/register" className="navbar-link">Sign Up</Link>
-            </>
+        <div className="navbar-auth">
+          {isLoggedIn ? (
+            <button onClick={onLogout} className="auth-button logout-button">
+              Logout
+            </button>
           ) : (
             <>
-              <Link to="/portfolio" className="navbar-link">Portfolio</Link>
-              <button onClick={onLogout} className="navbar-link">Logout</button>
+              <Link to="/login" className="auth-button login-button">
+                Login
+              </Link>
+              <Link to="/register" className="auth-button register-button">
+                Sign Up
+              </Link>
             </>
           )}
         </div>
       </div>
     </nav>
   );
-}
+};
 
 export default Navbar;

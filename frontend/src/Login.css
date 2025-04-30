@@ -17,58 +17,68 @@ body {
   
   /* Container for the form */
   .login-container {
-    background-color: #ffffff;
-    padding: 30px 40px;
-    border-radius: 10px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-    width: 100%;
     max-width: 400px;
+    margin: 4rem auto;
+    padding: 2rem;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   }
   
   /* Form title */
   .login-container h2 {
     text-align: center;
-    margin-bottom: 25px;
-    color: #2c3e50;
+    margin-bottom: 2rem;
+    color: #333;
+    font-size: 1.75rem;
   }
   
   /* Form styling */
-  .login-container form {
+  .login-form {
     display: flex;
     flex-direction: column;
+    gap: 1.25rem;
   }
   
   /* Input fields */
-  .login-container input {
-    padding: 10px 15px;
-    margin-bottom: 15px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    font-size: 14px;
-    transition: border-color 0.3s;
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .form-group input {
+    padding: 0.75rem 1rem;
+    border: 2px solid #e1e1e1;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: all 0.3s ease;
   }
   
   /* Input focus effect */
-  .login-container input:focus {
+  .form-group input:focus {
     outline: none;
-    border-color: #3498db;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
   }
   
   /* Submit button */
-  .login-container button {
-    padding: 10px 15px;
-    background-color: #3498db;
+  .login-button {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background-color: #007bff;
     color: white;
-    font-size: 16px;
     border: none;
-    border-radius: 5px;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
     cursor: pointer;
-    transition: background-color 0.3s;
+    transition: background-color 0.3s ease;
   }
   
   /* Button hover effect */
-  .login-container button:hover {
-    background-color: #2980b9;
+  .login-button:hover {
+    background-color: #0056b3;
   }
   
   /* Responsive adjustments */
@@ -76,5 +86,12 @@ body {
     .login-container {
       padding: 20px;
     }
+  }
+  
+  .error-message {
+    color: #dc3545;
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+    text-align: center;
   }
   

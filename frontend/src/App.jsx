@@ -6,7 +6,7 @@ import Home from './Home'
 import { UpdateStock } from './components/UpdateStock';
 import { StockInfo } from './components/StockInfo';
 
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Register from './Register';
 import Login from './Login';
 import Search from './search'
@@ -20,7 +20,14 @@ import StockGraph from './components/graph';
 import HeroSection from './components/HeroSection';
 import StockDashboard from './components/StockDashboard';
 import InsightsDashboard from './components/Insights';
+import { AuthProvider } from './context/AuthContext';
+import Signup from './components/Auth/Signup';
+import ProfilePage from './components/Profile/ProfilePage';
 
+const PrivateRoute = ({ children }) => {
+  const token = localStorage.getItem('token');
+  return token ? children : <Navigate to="/login" />;
+};
 
 function App() {
   const [startDate, setStartDate] = useState('2021-04-01');
@@ -28,30 +35,41 @@ function App() {
   const [aggregate, setAggregate] = useState('monthly');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   return (
-    <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <div className="min-h-screen bg-neutral-900 text-white relative">
-        {/* Glass animated background grid */}
-        <div className="fixed inset-0 bg-[radial-gradient(#00ffff10_1px,transparent_1px)] bg-[size:40px_40px] animate-pan z-0" />
+    <AuthProvider>
+      <Router>
+        <div className="min-h-screen bg-neutral-900 text-white relative">
+          {/* Glass animated background grid */}
+          <div className="fixed inset-0 bg-[radial-gradient(#00ffff10_1px,transparent_1px)] bg-[size:40px_40px] animate-pan z-0" />
 
-        <div className="relative z-10">
-          <Navbar isLoggedIn={isLoggedIn} onLogout={() => setIsLoggedIn(false)} />
-          
-          <main className="container mx-auto px-4 py-8 mt-16">
-            <Routes>
-              <Route path="/" element={
-                <div className="space-y-8">
-                  <HeroSection />
-                  <StockDashboard />
-                  <InsightsDashboard />
-                </div>
-              } />
-              <Route path="/register" element={<Register />} />
-              <Route path="/login" element={<Login />} />
-            </Routes>
-          </main>
+          <div className="relative z-10">
+            <Navbar isLoggedIn={isLoggedIn} onLogout={() => setIsLoggedIn(false)} />
+            
+            <main className="container mx-auto px-4 py-8 mt-16">
+              <Routes>
+                <Route path="/" element={
+                  <div className="space-y-8">
+                    <HeroSection />
+                    <StockDashboard />
+                    <InsightsDashboard />
+                  </div>
+                } />
+                <Route path="/register" element={<Register />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/signup" element={<Signup />} />
+                <Route
+                  path="/profile"
+                  element={
+                    <PrivateRoute>
+                      <ProfilePage />
+                    </PrivateRoute>
+                  }
+                />
+              </Routes>
+            </main>
+          </div>
         </div>
-      </div>
-    </Router>
+      </Router>
+    </AuthProvider>
   );
 }
 

@@ -16,25 +16,26 @@ const StockGraph = ({ symbol = 'AMZN' }) => {
   const [stockData, setStockData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [selectedStock, setSelectedStock] = useState('AMZN');
+  const [selectedTimeRange, setSelectedTimeRange] = useState('1Y');
   const [dateRange, setDateRange] = useState({
-    start: '2022-05-02',
-    end: '2022-05-18'
+    start: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    end: new Date().toISOString().split('T')[0]
   });
-  const [aggregation, setAggregation] = useState('weekly');
+  const [aggregation, setAggregation] = useState('monthly');
 
   const fetchStockData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get(`http://localhost:8000/stocks/${selectedStock}`, {
+      const response = await axios.get(`http://localhost:8000/api/stock-data`, {
         params: {
+          symbol,
           start_date: dateRange.start,
           end_date: dateRange.end,
           aggregate: aggregation
         }
       });
-      setStockData(response.data);
+      setStockData(response.data.data);
     } catch (err) {
       console.error('Error fetching stock data:', err);
       setError(err.response?.data?.detail || 'Failed to fetch stock data');
@@ -45,10 +46,10 @@ const StockGraph = ({ symbol = 'AMZN' }) => {
 
   useEffect(() => {
     fetchStockData();
-  }, [selectedStock, dateRange, aggregation]);
+  }, [symbol, dateRange, aggregation]);
 
   const handleTimeRangeClick = (range) => {
-    const end = new Date('2022-05-18');
+    const end = new Date();
     let start = new Date(end);
     
     switch (range) {
@@ -65,16 +66,13 @@ const StockGraph = ({ symbol = 'AMZN' }) => {
         start.setFullYear(start.getFullYear() - 1);
         break;
       case 'ALL':
-        start = new Date('2022-05-02');
+        start = new Date('2020-01-01');
         break;
       default:
-        start = new Date('2022-05-02');
+        start = new Date(end.getTime() - 365 * 24 * 60 * 60 * 1000);
     }
-
-    if (start < new Date('2022-05-02')) {
-      start = new Date('2022-05-02');
-    }
-
+    
+    setSelectedTimeRange(range);
     setDateRange({
       start: start.toISOString().split('T')[0],
       end: end.toISOString().split('T')[0]
@@ -110,11 +108,7 @@ const StockGraph = ({ symbol = 'AMZN' }) => {
             <div className="flex flex-col items-center gap-4">
               <div className="text-red-500">{error}</div>
               <button
-                onClick={() => {
-                  setError(null);
-                  setLoading(true);
-                  fetchStockData();
-                }}
+                onClick={fetchStockData}
                 className="px-4 py-2 bg-white/10 text-white/90 rounded-md hover:bg-white/20 transition-colors flex items-center gap-2"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -180,102 +174,48 @@ const StockGraph = ({ symbol = 'AMZN' }) => {
         </div>
 
         {/* Controls Section */}
-        <div className="mt-8 flex flex-col gap-6 px-4">
-          {/* Time Range Controls */}
+        <div className="mt-4 space-y-4">
+          {/* Time Range Buttons */}
           <div className="flex flex-wrap items-center gap-3 py-2">
             <div className="w-24">
               <span className="text-white text-sm font-semibold tracking-wide">Time Range</span>
             </div>
             <div className="flex-1 flex flex-wrap gap-3 justify-start">
+              {['1M', '3M', '6M', '1Y', 'ALL'].map((range) => (
               <button
-                onClick={() => handleTimeRangeClick('1M')}
+                  key={range}
+                  onClick={() => handleTimeRangeClick(range)}
                 className={`px-4 py-2.5 rounded-md text-sm font-medium transition-all ${
-                  dateRange.start === '2022-05-02' 
+                    selectedTimeRange === range
                     ? 'bg-blue-600 text-white shadow-lg ring-2 ring-blue-400' 
                     : 'bg-white/10 text-white/90 hover:bg-white/20'
                 }`}
               >
-                1M
+                  {range}
               </button>
-              <button
-                onClick={() => handleTimeRangeClick('3M')}
-                className={`px-4 py-2.5 rounded-md text-sm font-medium transition-all ${
-                  dateRange.start === '2022-04-02' 
-                    ? 'bg-blue-600 text-white shadow-lg ring-2 ring-blue-400' 
-                    : 'bg-white/10 text-white/90 hover:bg-white/20'
-                }`}
-              >
-                3M
-              </button>
-              <button
-                onClick={() => handleTimeRangeClick('6M')}
-                className={`px-4 py-2.5 rounded-md text-sm font-medium transition-all ${
-                  dateRange.start === '2022-03-02' 
-                    ? 'bg-blue-600 text-white shadow-lg ring-2 ring-blue-400' 
-                    : 'bg-white/10 text-white/90 hover:bg-white/20'
-                }`}
-              >
-                6M
-              </button>
-              <button
-                onClick={() => handleTimeRangeClick('1Y')}
-                className={`px-4 py-2.5 rounded-md text-sm font-medium transition-all ${
-                  dateRange.start === '2022-05-02' 
-                    ? 'bg-blue-600 text-white shadow-lg ring-2 ring-blue-400' 
-                    : 'bg-white/10 text-white/90 hover:bg-white/20'
-                }`}
-              >
-                1Y
-              </button>
-              <button
-                onClick={() => handleTimeRangeClick('ALL')}
-                className={`px-4 py-2.5 rounded-md text-sm font-medium transition-all ${
-                  dateRange.start === '2022-05-02' 
-                    ? 'bg-blue-600 text-white shadow-lg ring-2 ring-blue-400' 
-                    : 'bg-white/10 text-white/90 hover:bg-white/20'
-                }`}
-              >
-                ALL
-              </button>
+              ))}
             </div>
           </div>
 
-          {/* Aggregation Controls */}
+          {/* Aggregation Buttons */}
           <div className="flex flex-wrap items-center gap-3 py-2">
             <div className="w-24">
               <span className="text-white text-sm font-semibold tracking-wide">Aggregation</span>
             </div>
             <div className="flex-1 flex flex-wrap gap-3 justify-start">
+              {['daily', 'weekly', 'monthly', 'yearly'].map((agg) => (
               <button
-                onClick={() => setAggregation('weekly')}
+                  key={agg}
+                  onClick={() => setAggregation(agg)}
                 className={`px-4 py-2.5 rounded-md text-sm font-medium transition-all ${
-                  aggregation === 'weekly' 
+                    aggregation === agg
                     ? 'bg-blue-600 text-white shadow-lg ring-2 ring-blue-400' 
                     : 'bg-white/10 text-white/90 hover:bg-white/20'
                 }`}
               >
-                Weekly
+                  {agg.charAt(0).toUpperCase() + agg.slice(1)}
               </button>
-              <button
-                onClick={() => setAggregation('monthly')}
-                className={`px-4 py-2.5 rounded-md text-sm font-medium transition-all ${
-                  aggregation === 'monthly' 
-                    ? 'bg-blue-600 text-white shadow-lg ring-2 ring-blue-400' 
-                    : 'bg-white/10 text-white/90 hover:bg-white/20'
-                }`}
-              >
-                Monthly
-              </button>
-              <button
-                onClick={() => setAggregation('yearly')}
-                className={`px-4 py-2.5 rounded-md text-sm font-medium transition-all ${
-                  aggregation === 'yearly' 
-                    ? 'bg-blue-600 text-white shadow-lg ring-2 ring-blue-400' 
-                    : 'bg-white/10 text-white/90 hover:bg-white/20'
-                }`}
-              >
-                Yearly
-              </button>
+              ))}
             </div>
           </div>
         </div>

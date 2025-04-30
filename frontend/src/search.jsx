@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import "./search.css";
 
 function Search({ setSuggestions }) {
   const [query, setQuery] = useState(""); // Track search input
@@ -36,16 +37,23 @@ function Search({ setSuggestions }) {
   }, [query, setSuggestions]); // Only trigger effect when query changes
 
   return (
-    <div>
-      <input
-        type="text"
-        placeholder="Search for stocks..."
-        value={query}
-        onChange={handleInputChange}
-      />
+    <div className="search-container">
+      <div className="search-input-container">
+        <input
+          className="search-input"
+          type="text"
+          placeholder="Search for stocks..."
+          value={query}
+          onChange={handleInputChange}
+        />
+      </div>
       
       {/* Show loading spinner when fetching results */}
-      {isLoading && <p>Loading...</p>}
+      {isLoading && (
+        <div className="loading-spinner">
+          Loading...
+        </div>
+      )}
     </div>
   );
 }
