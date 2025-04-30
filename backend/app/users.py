@@ -1,8 +1,10 @@
 from pymongo import MongoClient
 from pymongo.errors import DuplicateKeyError
-
+import bcrypt
 
 from pymongo.mongo_client import MongoClient
+
+
 MONGO_URL = "mongodb+srv://abhilaksh:DVH1RDrl4DBUTCaA@capstone.vwbejki.mongodb.net/?retryWrites=true&w=majority&appName=Capstone"
 client = MongoClient(MONGO_URL)
 try:
@@ -32,7 +34,7 @@ def register_user(username: str, password: str, age: int, gender: str, profile_i
     try:
         user_data = {
             "username": username,
-            "password": password,
+            "password": hash_password(password),
             "age": age,
             "gender": gender,
             "profile_img": profile_img,
@@ -47,7 +49,7 @@ def login_user(username: str, password: str) -> bool:
     user = users_collection.find_one({"username": username})
     if not user:
         return False
-    if user["password"] != password:
+    if not verify_password(password, user["password"]):
         return False
     return True
 
@@ -55,5 +57,12 @@ def add_stock_to_portfolio(username: str, stock: str) -> bool:
     result = users_collection.update_one(
         {"username": username},
         {"$addToSet": {"portfolio": stock}} 
+    )
+    return result.modified_count > 0
+
+def remove_stock_from_portfolio(username: str, stock: str) -> bool:
+    result = users_collection.update_one(
+        {"username": username},
+        {"$pull": {"portfolio": stock}}  # Removes the stock if it exists
     )
     return result.modified_count > 0

@@ -20,10 +20,10 @@ def refresh_or_get_stock(symbol: str):
         stored_date = stock["date"].date()
 
         if stored_date == today_date:
-            print(f"Data for {symbol} is already fresh.")
+            # print(f"Data for {symbol} is already fresh.")
             return stock  # return the existing fresh stock
         else:
-            print(f"Updating data for {symbol} (outdated).")
+            # print(f"Updating data for {symbol} (outdated).")
             fresh_data = get_stock_data(symbol)
             collection.update_one(
                 {"symbol": symbol},
@@ -33,7 +33,7 @@ def refresh_or_get_stock(symbol: str):
             return fresh_data  # return fresh data
 
     else:
-        print(f"No data found for {symbol}, fetching new data.")
+        # print(f"No data found for {symbol}, fetching new data.")
         fresh_data = get_stock_data(symbol)
         collection.insert_one(fresh_data)
         return fresh_data
@@ -48,7 +48,18 @@ def get_all_stocks_data():
             print(f"Failed to fetch/update {symbol}: {str(e)}")
     return all_data
 
-if __name__ == "__main__":
-    stocks = get_all_stocks_data()
-    for stock in stocks:
-        print(stock)
+def clean_stock_data(stock: dict) -> dict:
+    return {
+        "symbol": stock["symbol"],
+        "current_price": stock["current_price"],
+        "open_price": stock["open_price"],
+        "high_price": stock["high_price"],
+        "low_price": stock["low_price"],
+        "volume": stock["volume"],
+        "date": stock["date"].strftime("%Y-%m-%d")  # convert datetime to string
+    }
+
+# if __name__ == "__main__":
+#     stocks = get_all_stocks_data()
+#     for stock in stocks:
+#         print(stock)
