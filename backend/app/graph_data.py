@@ -7,9 +7,9 @@ db = client["stock_database"]
 
 
 # , "MSFT", "GOOG", "AMZN", "TSLA", "META", "NFLX", "NVDA"
-
+done = ["amzn", "aapl","MSFT"]
 def large_uploader():
-    STOCK_SYMBOLS = ["AMZN"]
+    STOCK_SYMBOLS = ["GOOG"]
     for symbol in STOCK_SYMBOLS:
         print(f"Fetching data for {symbol}...")
         collection = db[symbol.lower()]
