@@ -4,30 +4,65 @@ from pydantic import BaseModel
 from datetime import datetime, timedelta
 import requests
 import os
+import time
+import logging
 from typing import Optional
 from fastapi.middleware.cors import CORSMiddleware
-from get_stock_data import StockDataResponse, StockDataService
-from home_data import *
+from .get_stock_data import StockDataResponse, StockDataService
+from .home_data import *
 # from load_model import load_model
 # from labeling import label_risk
 # from data_collection import get_stock_data
 # from data_preprocessing import preprocess_data
 # from feature_engineering import add_features
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 app = FastAPI()
 
 # CORS setup (for frontend)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["http://localhost:5173"],  # Vite's default port
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# MongoDB setup
-client = MongoClient("mongodb://localhost:27017")
-db = client.stock_db
-collection = db.stock_prices
+# MongoDB setup with retry logic
+def connect_to_mongodb(max_retries=3, retry_delay=2):
+    for attempt in range(max_retries):
+        try:
+            client = MongoClient(
+                "mongodb+srv://abhilaksh:DVH1RDrl4DBUTCaA@capstone.vwbejki.mongodb.net/?retryWrites=true&w=majority&appName=Capstone",
+                ssl=True,
+                tlsAllowInvalidCertificates=True,
+                serverSelectionTimeoutMS=5000,
+                connectTimeoutMS=10000,
+                socketTimeoutMS=10000
+            )
+            # Test the connection
+            client.admin.command('ping')
+            print(f"Successfully connected to MongoDB on attempt {attempt + 1}!")
+            return client
+        except Exception as e:
+            print(f"Attempt {attempt + 1} failed: {e}")
+            if attempt < max_retries - 1:
+                print(f"Retrying in {retry_delay} seconds...")
+                time.sleep(retry_delay)
+            else:
+                print("Max retries reached. Could not connect to MongoDB.")
+                raise
+
+try:
+    client = connect_to_mongodb()
+    db = client["stock_database"]
+    collection = db["stock_data"]
+except Exception as e:
+    print(f"Failed to connect to MongoDB: {e}")
+    raise
 
 # Reuse Finnhub API logic from fetcherdaily.py
 FINNHUB_API_KEY = "d02p359r01qi6jgif6p0d02p359r01qi6jgif6pg"  # Move to .env later
@@ -49,19 +84,72 @@ def get_stock_data(
     start_date: str = Query(..., description="Start date in YYYY-MM-DD"),
     end_date: str = Query(..., description="End date in YYYY-MM-DD"),
     aggregate: Optional[str] = Query("monthly", description="Aggregate by 'monthly' or 'yearly'")):
-    print(f"Start Date: {start_date}, End Date: {end_date}, Aggregate: {aggregate}")
-    stock_service = StockDataService(collection_name=symbol.lower())
     try:
-        data = stock_service.get_stock_data_from_db(start_date, end_date, aggregate)
+        # Validate aggregate parameter
+        if aggregate not in ['daily', 'weekly', 'monthly', 'yearly']:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid aggregate parameter. Must be one of: daily, weekly, monthly, yearly"
+            )
+            
+        # Validate symbol format
+        if not symbol.isalpha():
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid symbol format. Must contain only letters"
+            )
+            
+        logger.info(f"Received request for {symbol} from {start_date} to {end_date} with aggregation {aggregate}")
+        service = StockDataService()
+        data = service.get_stock_data_from_db(start_date, end_date, symbol, aggregate)
+        logger.info(f"Returning {len(data)} data points")
         return data
     except ValueError as e:
+        logger.error(f"ValueError in get_stock_data: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Unexpected error in get_stock_data: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error while fetching stock data")
 
 @app.get("/api/stocks")
 def get_all_stocks():
-    raw_data = get_all_stocks_data()
-    cleaned = [clean_stock_data(stock) for stock in raw_data]
-    return cleaned
+    try:
+        raw_data = get_all_stocks_data()
+        cleaned = [clean_stock_data(stock) for stock in raw_data]
+        return cleaned
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/stock-data")
+async def get_stock_data(
+    start_date: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    end_date: str = Query(..., description="End date in YYYY-MM-DD format"),
+    symbol: str = Query(..., description="Stock symbol (e.g., AMZN)"),
+    aggregate: str = Query("monthly", description="Aggregation type: daily, weekly, monthly, yearly")
+):
+    try:
+        # Validate aggregate parameter
+        if aggregate not in ['daily', 'weekly', 'monthly', 'yearly']:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid aggregate parameter. Must be one of: daily, weekly, monthly, yearly"
+            )
+            
+        # Validate symbol format
+        if not symbol.isalpha():
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid symbol format. Must contain only letters"
+            )
+            
+        service = StockDataService()
+        data = service.get_stock_data_from_db(start_date, end_date, symbol, aggregate)
+        return {"data": data}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error fetching stock data: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error while fetching stock data")
 
 # def fetch_stock_price(symbol: str):
 #     """Fetch stock price from Finnhub (same as fetcherdaily.py)"""

@@ -1,11 +1,23 @@
 from pymongo import MongoClient
 from datetime import datetime
-from stock_data import get_stock_data
+from .stock_data import get_stock_data
 # Import your API function
 # from your_api_module import fetch_stock_data
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Connect to MongoDB
-client = MongoClient("mongodb+srv://abhilaksh:DVH1RDrl4DBUTCaA@capstone.vwbejki.mongodb.net/?retryWrites=true&w=majority&appName=Capstone")
+client = MongoClient(
+    "mongodb+srv://abhilaksh:DVH1RDrl4DBUTCaA@capstone.vwbejki.mongodb.net/?retryWrites=true&w=majority&appName=Capstone",
+    ssl=True,
+    tlsAllowInvalidCertificates=True,
+    serverSelectionTimeoutMS=5000,
+    connectTimeoutMS=10000,
+    socketTimeoutMS=10000,
+    retryWrites=True,
+    retryReads=True
+)
 db = client["stock_database"]
 collection = db["stock_data"]
 
@@ -56,10 +68,4 @@ def clean_stock_data(stock: dict) -> dict:
         "high_price": stock["high_price"],
         "low_price": stock["low_price"],
         "volume": stock["volume"],
-        "date": stock["date"].strftime("%Y-%m-%d")  # convert datetime to string
-    }
-
-# if __name__ == "__main__":
-#     stocks = get_all_stocks_data()
-#     for stock in stocks:
-#         print(stock)
+        "date": stock["date"].strftime("%Y-%m-%d")}

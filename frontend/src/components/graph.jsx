@@ -10,169 +10,278 @@ import {
   Legend,
   ResponsiveContainer
 } from 'recharts';
+import axios from 'axios';
 
-function StockGraph({ startDate, endDate, aggregate }) {
+const StockGraph = ({ symbol = 'AMZN' }) => {
   const [stockData, setStockData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [selectedStock, setSelectedStock] = useState('AMZN');
+  const [dateRange, setDateRange] = useState({
+    start: '2022-05-02',
+    end: '2022-05-18'
+  });
+  const [aggregation, setAggregation] = useState('weekly');
 
-  useEffect(() => {
-    async function fetchStockData() {
-      try {
-        const response = await fetch(`http://127.0.0.1:8000/api/stocks?start_date=${startDate}&end_date=${endDate}&aggregate=${aggregate}`);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+  const fetchStockData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await axios.get(`http://localhost:8000/stocks/${selectedStock}`, {
+        params: {
+          start_date: dateRange.start,
+          end_date: dateRange.end,
+          aggregate: aggregation
         }
-        const data = await response.json();
-        setStockData(data);
-      } catch (error) {
-        console.error('Error fetching stock data:', error);
-      }
+      });
+      setStockData(response.data);
+    } catch (err) {
+      console.error('Error fetching stock data:', err);
+      setError(err.response?.data?.detail || 'Failed to fetch stock data');
+    } finally {
+      setLoading(false);
     }
-
-    fetchStockData();
-  }, [startDate, endDate, aggregate]);
-
-  // Hardcoded Apple stock data for today
-  const appleTodayData = {
-    symbol: 'AAPL',
-    date: new Date().toLocaleDateString(),
-    open: 193.62,
-    high: 194.85,
-    low: 192.43,
-    close: 193.58,
-    volume: '28.3M',
-    change: -0.04,
-    changePercent: -0.02,
-    riskEstimate: 'Medium', // Risk estimation
-    riskFactors: [
-      'Market volatility',
-      'Upcoming earnings report',
-      'Sector rotation'
-    ]
   };
 
-  // Calculate risk score (example calculation)
-  const riskScore = Math.min(Math.floor(Math.random() * 70) + 30, 100); // Random between 30-100
+  useEffect(() => {
+    fetchStockData();
+  }, [selectedStock, dateRange, aggregation]);
+
+  const handleTimeRangeClick = (range) => {
+    const end = new Date('2022-05-18');
+    let start = new Date(end);
+    
+    switch (range) {
+      case '1M':
+        start.setMonth(start.getMonth() - 1);
+        break;
+      case '3M':
+        start.setMonth(start.getMonth() - 3);
+        break;
+      case '6M':
+        start.setMonth(start.getMonth() - 6);
+        break;
+      case '1Y':
+        start.setFullYear(start.getFullYear() - 1);
+        break;
+      case 'ALL':
+        start = new Date('2022-05-02');
+        break;
+      default:
+        start = new Date('2022-05-02');
+    }
+
+    if (start < new Date('2022-05-02')) {
+      start = new Date('2022-05-02');
+    }
+
+    setDateRange({
+      start: start.toISOString().split('T')[0],
+      end: end.toISOString().split('T')[0]
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col h-full">
+        <h2 className="text-lg md:text-xl font-semibold text-white mb-4">
+          {symbol} - Stock Price Over Time
+        </h2>
+        <div className="flex-1 bg-white/5 rounded-lg p-4">
+          <div className="h-[400px] flex items-center justify-center">
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              <p className="text-white/80">Loading stock data...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col h-full">
+        <h2 className="text-lg md:text-xl font-semibold text-white mb-4">
+          {symbol} - Stock Price Over Time
+        </h2>
+        <div className="flex-1 bg-white/5 rounded-lg p-4">
+          <div className="h-[400px] flex items-center justify-center">
+            <div className="flex flex-col items-center gap-4">
+              <div className="text-red-500">{error}</div>
+              <button
+                onClick={() => {
+                  setError(null);
+                  setLoading(true);
+                  fetchStockData();
+                }}
+                className="px-4 py-2 bg-white/10 text-white/90 rounded-md hover:bg-white/20 transition-colors flex items-center gap-2"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                </svg>
+                Reload Data
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!stockData || stockData.length === 0) {
+    return (
+      <div className="flex flex-col h-full">
+        <h2 className="text-lg md:text-xl font-semibold text-white mb-4">
+          {symbol} - Stock Price Over Time
+        </h2>
+        <div className="flex-1 bg-white/5 rounded-lg p-4">
+          <div className="h-[400px] flex items-center justify-center">
+            <div className="text-yellow-500">No data available for the selected period</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ display: 'flex', gap: '20px', width: '100%' }}>
-      {/* Graph Section - Left Side */}
-      <div style={{ flex: 2, height: '500px' }}>
-        <h2>Stock Price Over Time</h2>
-        <ResponsiveContainer width="100%" height="80%">
-          <LineChart
-            data={stockData}
-            margin={{
-              top: 5,
-              right: 30,
-              left: 20,
-              bottom: 5,
-            }}
-          >
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis 
-              dataKey="date" 
-              tickFormatter={(date) => new Date(date).toLocaleDateString()} 
-            />
-            <YAxis 
-              domain={['auto', 'auto']} 
-              tickFormatter={(value) => `$${value.toFixed(2)}`}
-            />
-            <Tooltip 
-              formatter={(value) => [`$${value.toFixed(2)}`, 'Average Close']}
-              labelFormatter={(date) => `Date: ${new Date(date).toLocaleDateString()}`}
-            />
-            <Legend />
-            <Line
-              type="monotone"
-              dataKey="avg_close"
-              stroke="#8884d8"
-              activeDot={{ r: 8 }}
-              name="Average Close Price"
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
+    <div className="bg-white/10 backdrop-blur-md backdrop-saturate-150 border border-white/20 p-6 rounded-xl shadow-md flex-1">
+      <div className="flex flex-col h-full">
+        <h2 className="text-lg md:text-xl font-semibold text-white mb-4">
+          {symbol} - Stock Price Over Time
+        </h2>
+        <div className="flex-1 bg-white/5 rounded-lg p-4">
+          <ResponsiveContainer width="100%" height={400}>
+            <LineChart data={stockData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#ffffff20" />
+              <XAxis 
+                dataKey="date" 
+                stroke="#ffffff80"
+                tickFormatter={(date) => new Date(date).toLocaleDateString()}
+              />
+              <YAxis 
+                stroke="#ffffff80"
+                tickFormatter={(value) => `$${value.toFixed(2)}`}
+              />
+              <Tooltip 
+                formatter={(value) => [`$${value.toFixed(2)}`, 'Price']}
+                labelFormatter={(date) => new Date(date).toLocaleDateString()}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="avg_close" 
+                stroke="#00ffff" 
+                strokeWidth={2} 
+                dot={false}
+                activeDot={{ r: 4 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
 
-      {/* Table Section - Right Side */}
-      <div style={{ flex: 1 }}>
-        <h2>AAPL - Today's Data</h2>
-        <div style={{ 
-          background: '#f8f9fa', 
-          padding: '20px', 
-          borderRadius: '8px',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-        }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <tbody>
-              <tr>
-                <td style={{ padding: '8px', borderBottom: '1px solid #ddd', fontWeight: 'bold' }}>Symbol</td>
-                <td style={{ padding: '8px', borderBottom: '1px solid #ddd' }}>{appleTodayData.symbol}</td>
-              </tr>
-              <tr>
-                <td style={{ padding: '8px', borderBottom: '1px solid #ddd', fontWeight: 'bold' }}>Date</td>
-                <td style={{ padding: '8px', borderBottom: '1px solid #ddd' }}>{appleTodayData.date}</td>
-              </tr>
-              <tr>
-                <td style={{ padding: '8px', borderBottom: '1px solid #ddd', fontWeight: 'bold' }}>Open</td>
-                <td style={{ padding: '8px', borderBottom: '1px solid #ddd' }}>${appleTodayData.open.toFixed(2)}</td>
-              </tr>
-              <tr>
-                <td style={{ padding: '8px', borderBottom: '1px solid #ddd', fontWeight: 'bold' }}>High</td>
-                <td style={{ padding: '8px', borderBottom: '1px solid #ddd' }}>${appleTodayData.high.toFixed(2)}</td>
-              </tr>
-              <tr>
-                <td style={{ padding: '8px', borderBottom: '1px solid #ddd', fontWeight: 'bold' }}>Low</td>
-                <td style={{ padding: '8px', borderBottom: '1px solid #ddd' }}>${appleTodayData.low.toFixed(2)}</td>
-              </tr>
-              <tr>
-                <td style={{ padding: '8px', borderBottom: '1px solid #ddd', fontWeight: 'bold' }}>Close</td>
-                <td style={{ padding: '8px', borderBottom: '1px solid #ddd' }}>${appleTodayData.close.toFixed(2)}</td>
-              </tr>
-              <tr>
-                <td style={{ padding: '8px', borderBottom: '1px solid #ddd', fontWeight: 'bold' }}>Volume</td>
-                <td style={{ padding: '8px', borderBottom: '1px solid #ddd' }}>{appleTodayData.volume}</td>
-              </tr>
-              <tr>
-                <td style={{ padding: '8px', borderBottom: '1px solid #ddd', fontWeight: 'bold' }}>Change</td>
-                <td style={{ 
-                  padding: '8px', 
-                  borderBottom: '1px solid #ddd',
-                  color: appleTodayData.change >= 0 ? '#28a745' : '#dc3545'
-                }}>
-                  {appleTodayData.change >= 0 ? '+' : ''}{appleTodayData.change.toFixed(2)} ({appleTodayData.changePercent.toFixed(2)}%)
-                </td>
-              </tr>
-              <tr>
-                <td style={{ padding: '8px', borderBottom: '1px solid #ddd', fontWeight: 'bold' }}>Risk Estimate</td>
-                <td style={{ padding: '8px', borderBottom: '1px solid #ddd' }}>
-                  <div style={{ display: 'flex', alignItems: 'center' }}>
-                    <div style={{
-                      width: '16px',
-                      height: '16px',
-                      borderRadius: '50%',
-                      background: riskScore > 70 ? '#dc3545' : riskScore > 40 ? '#ffc107' : '#28a745',
-                      marginRight: '8px'
-                    }} />
-                    {appleTodayData.riskEstimate} (Score: {riskScore})
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        {/* Controls Section */}
+        <div className="mt-8 flex flex-col gap-6 px-4">
+          {/* Time Range Controls */}
+          <div className="flex flex-wrap items-center gap-3 py-2">
+            <div className="w-24">
+              <span className="text-white text-sm font-semibold tracking-wide">Time Range</span>
+            </div>
+            <div className="flex-1 flex flex-wrap gap-3 justify-start">
+              <button
+                onClick={() => handleTimeRangeClick('1M')}
+                className={`px-4 py-2.5 rounded-md text-sm font-medium transition-all ${
+                  dateRange.start === '2022-05-02' 
+                    ? 'bg-blue-600 text-white shadow-lg ring-2 ring-blue-400' 
+                    : 'bg-white/10 text-white/90 hover:bg-white/20'
+                }`}
+              >
+                1M
+              </button>
+              <button
+                onClick={() => handleTimeRangeClick('3M')}
+                className={`px-4 py-2.5 rounded-md text-sm font-medium transition-all ${
+                  dateRange.start === '2022-04-02' 
+                    ? 'bg-blue-600 text-white shadow-lg ring-2 ring-blue-400' 
+                    : 'bg-white/10 text-white/90 hover:bg-white/20'
+                }`}
+              >
+                3M
+              </button>
+              <button
+                onClick={() => handleTimeRangeClick('6M')}
+                className={`px-4 py-2.5 rounded-md text-sm font-medium transition-all ${
+                  dateRange.start === '2022-03-02' 
+                    ? 'bg-blue-600 text-white shadow-lg ring-2 ring-blue-400' 
+                    : 'bg-white/10 text-white/90 hover:bg-white/20'
+                }`}
+              >
+                6M
+              </button>
+              <button
+                onClick={() => handleTimeRangeClick('1Y')}
+                className={`px-4 py-2.5 rounded-md text-sm font-medium transition-all ${
+                  dateRange.start === '2022-05-02' 
+                    ? 'bg-blue-600 text-white shadow-lg ring-2 ring-blue-400' 
+                    : 'bg-white/10 text-white/90 hover:bg-white/20'
+                }`}
+              >
+                1Y
+              </button>
+              <button
+                onClick={() => handleTimeRangeClick('ALL')}
+                className={`px-4 py-2.5 rounded-md text-sm font-medium transition-all ${
+                  dateRange.start === '2022-05-02' 
+                    ? 'bg-blue-600 text-white shadow-lg ring-2 ring-blue-400' 
+                    : 'bg-white/10 text-white/90 hover:bg-white/20'
+                }`}
+              >
+                ALL
+              </button>
+            </div>
+          </div>
 
-          {/* Risk Factors Section */}
-          <div style={{ marginTop: '20px' }}>
-            <h4 style={{ marginBottom: '10px' }}>Risk Factors:</h4>
-            <ul style={{ paddingLeft: '20px', margin: 0 }}>
-              {appleTodayData.riskFactors.map((factor, index) => (
-                <li key={index} style={{ marginBottom: '5px' }}>{factor}</li>
-              ))}
-            </ul>
+          {/* Aggregation Controls */}
+          <div className="flex flex-wrap items-center gap-3 py-2">
+            <div className="w-24">
+              <span className="text-white text-sm font-semibold tracking-wide">Aggregation</span>
+            </div>
+            <div className="flex-1 flex flex-wrap gap-3 justify-start">
+              <button
+                onClick={() => setAggregation('weekly')}
+                className={`px-4 py-2.5 rounded-md text-sm font-medium transition-all ${
+                  aggregation === 'weekly' 
+                    ? 'bg-blue-600 text-white shadow-lg ring-2 ring-blue-400' 
+                    : 'bg-white/10 text-white/90 hover:bg-white/20'
+                }`}
+              >
+                Weekly
+              </button>
+              <button
+                onClick={() => setAggregation('monthly')}
+                className={`px-4 py-2.5 rounded-md text-sm font-medium transition-all ${
+                  aggregation === 'monthly' 
+                    ? 'bg-blue-600 text-white shadow-lg ring-2 ring-blue-400' 
+                    : 'bg-white/10 text-white/90 hover:bg-white/20'
+                }`}
+              >
+                Monthly
+              </button>
+              <button
+                onClick={() => setAggregation('yearly')}
+                className={`px-4 py-2.5 rounded-md text-sm font-medium transition-all ${
+                  aggregation === 'yearly' 
+                    ? 'bg-blue-600 text-white shadow-lg ring-2 ring-blue-400' 
+                    : 'bg-white/10 text-white/90 hover:bg-white/20'
+                }`}
+              >
+                Yearly
+              </button>
+            </div>
           </div>
         </div>
       </div>
     </div>
   );
-}
+};
 
 export default StockGraph;

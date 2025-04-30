@@ -5,7 +5,6 @@ from datetime import datetime
 
 API_KEY = '7bf9b1f7bee44c049e1b4442e7bf278d'
 def get_stock_data(symbol: str):
-    print("RUNNING")
     url = f"https://api.twelvedata.com/quote?symbol={symbol}&apikey={API_KEY}"
     response = requests.get(url)
 

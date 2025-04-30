@@ -15,9 +15,9 @@ ts = TimeSeries(key=api_key, output_format='pandas', indexing_type='date')
 
 
 # lstm_model = load_model('lstm_model.h5')
-rf_model = joblib.load('rf_model.pkl')
+rf_model = joblib.load('not_using/rf_model.pkl')
 
-print("✅ Models loaded successfully!")
+
 
 
 def fetch_latest_stock_data(symbol):
@@ -38,16 +38,12 @@ def predict_next_price(symbol):
     prices = fetch_latest_stock_data(symbol)
 
     if len(prices) < 50:
-        print(f"❌ Not enough data to predict for {symbol}. Need at least 50 data points.")
         return
 
     last_50_prices = prices[-50:]
 
-    # lstm_input = np.reshape(last_50_prices, (1, 50, 1))
-    rf_input = np.reshape(last_50_prices, (1, 50))
 
-    #
-    # lstm_pred = lstm_model.predict(lstm_input)[0][0]
+    rf_input = np.reshape(last_50_prices, (1, 50))
     rf_pred = rf_model.predict(rf_input)[0]
 
     print(f"\n📈 Predicted Next Price for {symbol}:")
