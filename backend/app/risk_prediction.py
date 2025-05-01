@@ -25,34 +25,32 @@ class RiskPredictionService:
             raise
 
     def prepare_data(self, time_series_data):
-        """Prepare time series data for the LSTM model"""
+        """Prepare time series data for the LSTM model exactly as it was trained"""
         try:
-            # Convert to DataFrame
+            # Convert to DataFrame and get returns
             df = pd.DataFrame(time_series_data)
+            returns = df['current_price'].pct_change().dropna().values
             
-            # Calculate returns
-            df['returns'] = df['current_price'].pct_change()
-            
-            # Calculate rolling volatility (60-day window)
+            # Calculate volatility with window_size=60
             window_size = 60
-            df['volatility'] = df['returns'].rolling(window=window_size).std()
+            volatility = np.array(
+                [np.std(returns[i - window_size:i]) if i >= window_size else 0 
+                 for i in range(1, len(returns))]
+            )
             
-            # Drop NaN values
-            df = df.dropna()
+            # Normalize volatility using MinMaxScaler
+            scaler = MinMaxScaler(feature_range=(0, 1))
+            scaled_volatility = scaler.fit_transform(volatility.reshape(-1, 1))
             
-            if len(df) < window_size:
-                raise ValueError("Not enough data points for prediction")
-            
-            # Normalize volatility
-            scaler = MinMaxScaler()
-            scaled_volatility = scaler.fit_transform(df['volatility'].values.reshape(-1, 1))
-            
-            # Prepare input data for LSTM
+            # Prepare input data exactly as in training
             x = []
             for i in range(window_size, len(scaled_volatility)):
-                x.append(scaled_volatility[i-window_size:i, 0])
+                x.append(scaled_volatility[i - window_size:i, 0])
             
-            return np.array(x).reshape(-1, window_size, 1)
+            x = np.array(x)
+            x = np.reshape(x, (x.shape[0], x.shape[1], 1))
+            
+            return x
             
         except Exception as e:
             logger.error(f"Error preparing data for risk prediction: {str(e)}")
