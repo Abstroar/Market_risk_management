@@ -139,7 +139,7 @@ const StockGraph = ({ symbol = 'AMZN' }) => {
   }
 
   return (
-    <div className="bg-white/10 backdrop-blur-md backdrop-saturate-150 border border-white/20 p-6 rounded-xl shadow-md flex-1">
+    <div className="bg-transparent backdrop-blur-md backdrop-saturate-150 border border-white/20 p-6 rounded-xl shadow-md flex-1">
       <div className="flex flex-col h-full">
         <h2 className="text-lg md:text-xl font-semibold text-white mb-4">
           {symbol} - Stock Price Over Time
