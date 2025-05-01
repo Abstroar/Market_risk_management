@@ -10,7 +10,14 @@ const Navbar = ({ isLoggedIn, onLogout }) => {
   const handleSearch = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      navigate(`/dashboard?symbol=${searchQuery.trim().toUpperCase()}`);
+      const symbol = searchQuery.trim().toUpperCase();
+      if (location.pathname === '/dashboard') {
+        // If already on dashboard, just update the URL
+        navigate(`/dashboard?symbol=${symbol}`, { replace: true });
+      } else {
+        // If not on dashboard, navigate to it
+        navigate(`/dashboard?symbol=${symbol}`);
+      }
       setSearchQuery('');
     }
   };

@@ -14,11 +14,10 @@ from passlib.context import CryptContext
 from .get_stock_data import StockDataResponse, StockDataService
 from .home_data import *
 from dotenv import load_dotenv
-# from load_model import load_model
-# from labeling import label_risk
-# from data_collection import get_stock_data
-# from data_preprocessing import preprocess_data
-# from feature_engineering import add_features
+from .stock_fetcher import fetch_and_store_stock_data
+from .stock_data import get_stock_data as get_twelvedata_stock_data
+from .time_series_data import TimeSeriesDataService
+from .risk_prediction import RiskPredictionService
 
 load_dotenv()
 
@@ -31,10 +30,12 @@ app = FastAPI()
 # CORS setup (for frontend)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],  # Allow both Vite and React default ports
+    allow_origins=["*"],  # Allow both Vite and React default ports
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # Allow all methods
+    allow_headers=["*"],  # Allow all headers
+    expose_headers=["*"],  # Expose all headers
+    max_age=3600,  # Cache preflight requests for 1 hour
 )
 
 # MongoDB setup with retry logic
@@ -379,6 +380,109 @@ async def update_portfolio(symbols: List[str], current_user: dict = Depends(get_
         {"$set": {"symbols": symbols, "updated_at": datetime.now()}}
     )
     return {"message": "Portfolio updated successfully"}
+
+# Initialize services
+time_series_service = TimeSeriesDataService()
+risk_prediction_service = RiskPredictionService()
+
+@app.get("/api/fetch-stock/{symbol}")
+async def fetch_stock(symbol: str):
+    try:
+        # Try to get data from TwelveData
+        try:
+            current_data = get_twelvedata_stock_data(symbol)
+        except HTTPException as e:
+            if e.status_code == 404:
+                return {"status": "error", "message": f"Stock {symbol} not found"}
+            return {"status": "error", "message": "Failed to fetch stock data"}
+        except Exception as e:
+            print(f"Error fetching from TwelveData: {str(e)}")
+            return {"status": "error", "message": "Failed to fetch stock data"}
+            
+        # Create data point for current data
+        data_point = {
+            "symbol": symbol.upper(),
+            "date": current_data["date"].strftime("%Y-%m-%dT%H:%M:%S.000+00:00"),
+            "current_price": str(current_data["current_price"]),
+            "open_price": str(current_data["open_price"]),
+            "high_price": str(current_data["high_price"]),
+            "low_price": str(current_data["low_price"]),
+            "volume": str(current_data["volume"])
+        }
+        
+        # Store in database
+        time_series_service.collection.insert_one(data_point)
+        
+        # Remove _id from response
+        data_point.pop("_id", None)
+        
+        return {
+            "status": "success",
+            "data": data_point
+        }
+                
+    except Exception as e:
+        print(f"Error in fetch_stock: {str(e)}")
+        return {"status": "error", "message": "Internal server error"}
+
+@app.get("/api/stock-data")
+async def get_stock_data_range(
+    symbol: str,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None
+):
+    try:
+        # Get time series data from the database
+        data = time_series_service.get_time_series_data(symbol, start_date, end_date)
+        
+        if not data:
+            return {"status": "success", "data": []}
+            
+        return {"status": "success", "data": data}
+        
+    except Exception as e:
+        print(f"Error in get_stock_data_range: {str(e)}")
+        return {"status": "error", "message": "Internal server error"}
+
+@app.get("/api/risk-prediction/{symbol}")
+async def get_risk_prediction(symbol: str):
+    try:
+        # Get time series data for the last 90 days
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=90)
+        
+        time_series_data = time_series_service.get_time_series_data(
+            symbol,
+            start_date.strftime("%Y-%m-%d"),
+            end_date.strftime("%Y-%m-%d")
+        )
+        
+        if not time_series_data:
+            return {
+                "status": "error",
+                "message": "Not enough historical data for risk prediction"
+            }
+        
+        # Get risk prediction
+        risk_prediction = risk_prediction_service.predict_risk(time_series_data)
+        
+        return {
+            "status": "success",
+            "data": risk_prediction
+        }
+        
+    except Exception as e:
+        print(f"Error in get_risk_prediction: {str(e)}")
+        return {"status": "error", "message": "Internal server error"}
+
+@app.get("/api/available-symbols")
+async def get_available_symbols():
+    try:
+        symbols = time_series_service.get_available_symbols()
+        return {"status": "success", "data": symbols}
+    except Exception as e:
+        print(f"Error in get_available_symbols: {str(e)}")
+        return {"status": "error", "message": "Internal server error"}
 
 if __name__ == "__main__":
     import uvicorn

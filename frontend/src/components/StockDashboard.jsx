@@ -16,41 +16,34 @@ const StockDetailsPanel = ({ selectedStock }) => {
     
     try {
       const symbol = selectedStock.toUpperCase();
-      console.log('Fetching data for symbol:', symbol);
       
-      // Get today's date and one year ago
-      const today = new Date();
-      const oneYearAgo = new Date();
-      oneYearAgo.setFullYear(today.getFullYear() - 1);
+      // Get current stock data
+      const response = await axios.get(`http://localhost:8000/api/fetch-stock/${symbol}`);
       
-      const response = await axios.get(`http://localhost:8000/api/stock-data`, {
-        params: {
-          symbol,
-          start_date: oneYearAgo.toISOString().split('T')[0],
-          end_date: today.toISOString().split('T')[0],
-          aggregate: 'daily'
-        }
-      });
-      
-      console.log('API Response:', response.data);
-      
-      if (response.data && response.data.data && response.data.data.length > 0) {
-        const data = response.data.data[0];
+      if (response.data && response.data.status === 'success') {
+        const currentData = response.data.data;
         setStockDetails({
-          currentPrice: data.avg_close,
-          open: data.avg_close,
-          high: data.avg_close,
-          low: data.avg_close,
-          volume: 'N/A',
-          riskScore: 'N/A',
-          prediction: 'N/A'
+          currentPrice: parseFloat(currentData.current_price),
+          open: parseFloat(currentData.open_price),
+          high: parseFloat(currentData.high_price),
+          low: parseFloat(currentData.low_price),
+          volume: parseInt(currentData.volume),
+          date: currentData.date
         });
       } else {
-        setError('No data available for this stock');
+        setError('Failed to fetch stock data');
       }
     } catch (err) {
       console.error('Error fetching stock details:', err);
-      setError('Failed to fetch stock data');
+      if (err.response?.status === 404) {
+        setError(`Stock ${selectedStock} not found. Please verify the stock symbol and try again.`);
+      } else if (err.response?.status === 429) {
+        setError('Rate limit reached. Please wait a moment and try again.');
+      } else if (err.response?.status === 500) {
+        setError('Server error while fetching stock data. Please try again later.');
+      } else {
+        setError('Failed to fetch stock data. Please try again later.');
+      }
     } finally {
       setLoading(false);
     }
@@ -60,74 +53,33 @@ const StockDetailsPanel = ({ selectedStock }) => {
     fetchStockDetails();
   }, [selectedStock]);
 
+  if (loading) return <div className="text-white">Loading stock data...</div>;
+  if (error) return <div className="text-red-500 p-4 bg-red-500/10 rounded-lg">{error}</div>;
+
   return (
-    <div className="flex flex-col h-full">
-      <div className="bg-white/10 backdrop-blur-md backdrop-saturate-150 border border-white/20 p-6 rounded-xl shadow-md flex-1">
-        <h2 className="text-xl font-semibold text-white mb-4">{selectedStock} - Stock Details</h2>
-        
-        {loading ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-          </div>
-        ) : error ? (
-          <div className="text-red-500 text-center p-4">
-            {error}
-            <button
-              onClick={fetchStockDetails}
-              className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >
-              Retry
-            </button>
-          </div>
-        ) : stockDetails ? (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-white/5 p-2.5 rounded-lg">
-                <p className="text-white/60 text-xs">Current Price</p>
-                <p className="text-white text-base font-medium">${stockDetails.currentPrice?.toFixed(2) || 'N/A'}</p>
-              </div>
-              <div className="bg-white/5 p-2.5 rounded-lg">
-                <p className="text-white/60 text-xs">Open</p>
-                <p className="text-white text-base font-medium">${stockDetails.open?.toFixed(2) || 'N/A'}</p>
-              </div>
-              <div className="bg-white/5 p-2.5 rounded-lg">
-                <p className="text-white/60 text-xs">High</p>
-                <p className="text-white text-base font-medium">${stockDetails.high?.toFixed(2) || 'N/A'}</p>
-              </div>
-              <div className="bg-white/5 p-2.5 rounded-lg">
-                <p className="text-white/60 text-xs">Low</p>
-                <p className="text-white text-base font-medium">${stockDetails.low?.toFixed(2) || 'N/A'}</p>
-              </div>
-              <div className="bg-white/5 p-2.5 rounded-lg">
-                <p className="text-white/60 text-xs">Volume</p>
-                <p className="text-white text-base font-medium">{stockDetails.volume || 'N/A'}</p>
-              </div>
-              <div className="bg-white/5 p-2.5 rounded-lg">
-                <p className="text-white/60 text-xs">Risk Score</p>
-                <p className="text-white text-base font-medium">{stockDetails.riskScore || 'N/A'}</p>
-              </div>
-              <div className="bg-white/5 p-2.5 rounded-lg">
-                <p className="text-white/60 text-xs">Prediction</p>
-                <p className={`text-base font-medium ${
-                  stockDetails.prediction === 'Buy' ? 'text-green-500' : 
-                  stockDetails.prediction === 'Sell' ? 'text-red-500' : 
-                  'text-yellow-500'
-                }`}>
-                  {stockDetails.prediction || 'N/A'}
-                </p>
-              </div>
-            </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+      {/* Graph - 50% width */}
+      <div className="bg-white/5 rounded-lg p-4 w-full">
+        <h3 className="text-lg font-semibold text-white mb-4">Stock Graph</h3>
+        <div className="w-full h-[300px]">
+          <StockGraph symbol={selectedStock} />
+        </div>
+      </div>
+
+      {/* Details - 50% width */}
+      <div className="bg-white/5 rounded-lg p-4 w-full">
+        <h3 className="text-lg font-semibold text-white mb-4">Stock Details</h3>
+        {stockDetails ? (
+          <div className="space-y-2 text-white">
+            <p>Current Price: ${stockDetails.currentPrice?.toFixed(2) || 'N/A'}</p>
+            <p>Open: ${stockDetails.open?.toFixed(2) || 'N/A'}</p>
+            <p>High: ${stockDetails.high?.toFixed(2) || 'N/A'}</p>
+            <p>Low: ${stockDetails.low?.toFixed(2) || 'N/A'}</p>
+            <p>Volume: {stockDetails.volume ? stockDetails.volume.toLocaleString() : 'N/A'}</p>
+            <p>Last Updated: {stockDetails.date ? new Date(stockDetails.date).toLocaleString() : 'N/A'}</p>
           </div>
         ) : (
-          <div className="text-yellow-500 text-center p-4">
-            No data available for {selectedStock}
-            <button
-              onClick={fetchStockDetails}
-              className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >
-              Retry
-            </button>
-          </div>
+          <div className="text-gray-400">No data available</div>
         )}
       </div>
     </div>
@@ -135,8 +87,8 @@ const StockDetailsPanel = ({ selectedStock }) => {
 };
 
 const StockDashboard = () => {
-  const [selectedStock, setSelectedStock] = useState('AMZN');
   const location = useLocation();
+  const [selectedStock, setSelectedStock] = useState('AMZN');
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -144,21 +96,16 @@ const StockDashboard = () => {
     if (symbol) {
       setSelectedStock(symbol.toUpperCase());
     }
-  }, [location.search]);
+  }, [location]);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-2 md:p-4 h-full">
-      {/* Left side - Graph */}
-      <div className="flex flex-col h-full">
-        <div className="bg-white/10 backdrop-blur-md backdrop-saturate-150 border border-white/20 p-4 rounded-xl shadow-md flex-1 flex flex-col">
-          <StockGraph symbol={selectedStock} />
-        </div>
-      </div>
-
-      {/* Right side - Stock Details */}
+    <div className="container mx-auto px-4 py-8">
+      <h2 className="text-2xl font-bold text-white mb-6">
+        {selectedStock} Stock Dashboard
+      </h2>
       <StockDetailsPanel selectedStock={selectedStock} />
     </div>
   );
 };
 
-export default StockDashboard; 
+export default StockDashboard;

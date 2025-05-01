@@ -49,8 +49,14 @@ function App() {
                 <Route path="/" element={
                   <div className="space-y-8">
                     <HeroSection />
+                    <div className="w-full">
+                      <StockDashboard />
+                    </div>
+                  </div>
+                } />
+                <Route path="/dashboard" element={
+                  <div className="space-y-8">
                     <StockDashboard />
-                    <InsightsDashboard />
                   </div>
                 } />
                 <Route path="/register" element={<Register />} />

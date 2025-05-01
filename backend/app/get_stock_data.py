@@ -5,6 +5,8 @@ from typing import List, Optional
 from pydantic import BaseModel
 import logging
 import ssl
+import yfinance as yf
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +45,6 @@ class StockDataService:
     def get_available_date_range(self, symbol: str) -> tuple:
         """Get the earliest and latest dates available for a symbol"""
         try:
-            # Get collection name from lowercase symbol
             collection_name = symbol.lower()
             collection = self.db[collection_name]
             
@@ -64,16 +65,68 @@ class StockDataService:
             logger.error(f"Error getting date range for {symbol}: {str(e)}")
             return None, None
 
+    def get_stock_data_from_yfinance(self, start_date: str, end_date: str, symbol: str) -> List[dict]:
+        """Fetch stock data from yfinance API"""
+        max_retries = 3
+        retry_delay = 5  # Increased delay to 5 seconds
+        
+        for attempt in range(max_retries):
+            try:
+                # Download data from yfinance using a different approach
+                try:
+                    # First try to get data directly using download
+                    data = yf.download(
+                        symbol,
+                        start=start_date,
+                        end=end_date,
+                        progress=False
+                    )
+                    
+                    if data.empty:
+                        # If empty, try with a different period
+                        logger.warning(f"No data found for {symbol} in specified date range, trying last 1 year...")
+                        data = yf.download(
+                            symbol,
+                            period="1y",
+                            progress=False
+                        )
+                    
+                    if data.empty:
+                        raise ValueError(f"No historical data available for {symbol} on Yahoo Finance")
+                    
+                    # Convert to list of dictionaries
+                    result = []
+                    for index, row in data.iterrows():
+                        result.append({
+                            "date": index.strftime('%Y-%m-%d'),
+                            "avg_close": float(row['Close'])
+                        })
+                    
+                    return result
+                    
+                except Exception as e:
+                    if "Too Many Requests" in str(e) or "429" in str(e):
+                        if attempt < max_retries - 1:
+                            logger.warning(f"Rate limited by Yahoo Finance. Retrying in {retry_delay} seconds...")
+                            time.sleep(retry_delay)
+                            continue
+                        raise ValueError("Yahoo Finance API rate limit reached. Please try again later.")
+                    raise
+                    
+            except Exception as e:
+                if attempt == max_retries - 1:  # Last attempt
+                    logger.error(f"Error fetching data from yfinance for {symbol} after {max_retries} attempts: {str(e)}")
+                    raise ValueError(f"Error fetching data from yfinance for {symbol}: {str(e)}")
+                logger.warning(f"Attempt {attempt + 1} failed for {symbol}: {str(e)}")
+                time.sleep(retry_delay)
+
     def get_stock_data_from_db(self, start_date: str, end_date: str, symbol: str, aggregate: str = 'monthly') -> List[dict]:
         try:
-            # Convert string dates to datetime objects
             start = datetime.strptime(start_date, "%Y-%m-%d")
             end = datetime.strptime(end_date, "%Y-%m-%d")
             
-            # Get current date for validation
             current_date = datetime.now()
             
-            # Validate dates are not in the future
             if start > current_date:
                 raise ValueError(f"Start date {start_date} is in the future. Please use a date up to today.")
             if end > current_date:
@@ -82,14 +135,18 @@ class StockDataService:
             # Get available date range
             earliest_date, latest_date = self.get_available_date_range(symbol)
             
+            # If no data in database, try yfinance
             if not earliest_date or not latest_date:
-                raise ValueError(f"No data found for {symbol} in the database")
+                logger.info(f"No data found in database for {symbol}, trying yfinance...")
+                return self.get_stock_data_from_yfinance(start_date, end_date, symbol)
             
             # Check if requested dates are within available range
             if start > latest_date:
-                raise ValueError(f"Start date {start_date} is after latest available data ({latest_date.strftime('%Y-%m-%d')})")
+                logger.info(f"Start date {start_date} is after latest available data, trying yfinance...")
+                return self.get_stock_data_from_yfinance(start_date, end_date, symbol)
             if end < earliest_date:
-                raise ValueError(f"End date {end_date} is before earliest available data ({earliest_date.strftime('%Y-%m-%d')})")
+                logger.info(f"End date {end_date} is before earliest available data, trying yfinance...")
+                return self.get_stock_data_from_yfinance(start_date, end_date, symbol)
             
             # Adjust dates to available range if needed
             if start < earliest_date:
@@ -99,11 +156,9 @@ class StockDataService:
                 end = latest_date
                 logger.info(f"Adjusted end date to latest available: {end.strftime('%Y-%m-%d')}")
 
-            # Get collection name from lowercase symbol
             collection_name = symbol.lower()
             collection = self.db[collection_name]
 
-            # Query the collection with date filter
             data_list = list(collection.find({
                 'Date': {'$gte': start, '$lte': end}
             }))
@@ -113,15 +168,12 @@ class StockDataService:
 
             data = pd.DataFrame(data_list)
 
-            # Ensure 'Date' is datetime
             if not pd.api.types.is_datetime64_any_dtype(data['Date']):
                 data['Date'] = pd.to_datetime(data['Date'])
 
-            # Check if required fields exist
             if 'Close' not in data.columns:
                 raise ValueError(f"Missing 'Close' field in data for {symbol}")
 
-            # Handle aggregation
             if aggregate == 'daily':
                 data['Day'] = data['Date'].dt.date
                 aggregated_data = data.groupby('Day').agg({'Close': 'mean'}).reset_index()
