@@ -65,61 +65,6 @@ class StockDataService:
             logger.error(f"Error getting date range for {symbol}: {str(e)}")
             return None, None
 
-    def get_stock_data_from_yfinance(self, start_date: str, end_date: str, symbol: str) -> List[dict]:
-        """Fetch stock data from yfinance API"""
-        max_retries = 3
-        retry_delay = 5  # Increased delay to 5 seconds
-        
-        for attempt in range(max_retries):
-            try:
-                # Download data from yfinance using a different approach
-                try:
-                    # First try to get data directly using download
-                    data = yf.download(
-                        symbol,
-                        start=start_date,
-                        end=end_date,
-                        progress=False
-                    )
-                    
-                    if data.empty:
-                        # If empty, try with a different period
-                        logger.warning(f"No data found for {symbol} in specified date range, trying last 1 year...")
-                        data = yf.download(
-                            symbol,
-                            period="1y",
-                            progress=False
-                        )
-                    
-                    if data.empty:
-                        raise ValueError(f"No historical data available for {symbol} on Yahoo Finance")
-                    
-                    # Convert to list of dictionaries
-                    result = []
-                    for index, row in data.iterrows():
-                        result.append({
-                            "date": index.strftime('%Y-%m-%d'),
-                            "avg_close": float(row['Close'])
-                        })
-                    
-                    return result
-                    
-                except Exception as e:
-                    if "Too Many Requests" in str(e) or "429" in str(e):
-                        if attempt < max_retries - 1:
-                            logger.warning(f"Rate limited by Yahoo Finance. Retrying in {retry_delay} seconds...")
-                            time.sleep(retry_delay)
-                            continue
-                        raise ValueError("Yahoo Finance API rate limit reached. Please try again later.")
-                    raise
-                    
-            except Exception as e:
-                if attempt == max_retries - 1:  # Last attempt
-                    logger.error(f"Error fetching data from yfinance for {symbol} after {max_retries} attempts: {str(e)}")
-                    raise ValueError(f"Error fetching data from yfinance for {symbol}: {str(e)}")
-                logger.warning(f"Attempt {attempt + 1} failed for {symbol}: {str(e)}")
-                time.sleep(retry_delay)
-
     def get_stock_data_from_db(self, start_date: str, end_date: str, symbol: str, aggregate: str = 'monthly') -> List[dict]:
         try:
             start = datetime.strptime(start_date, "%Y-%m-%d")
@@ -213,3 +158,6 @@ class StockDataService:
             logger.error(f"Error processing stock data: {str(e)}")
             raise ValueError(f"Error processing stock data: {str(e)}")
 
+    # print("hello")
+    # x = StockDataService().get_stock_data_from_db("2023-01-01", "2023-12-31","amzn",aggregate="daily")
+    # print(x)

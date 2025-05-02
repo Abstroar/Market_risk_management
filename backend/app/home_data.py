@@ -1,6 +1,6 @@
 from pymongo import MongoClient
 from datetime import datetime
-from .stock_data import get_stock_data
+from .stock_data import get_onday_data as get_stock_data # Import your function to fetch stock data
 # Import your API function
 # from your_api_module import fetch_stock_data
 import logging

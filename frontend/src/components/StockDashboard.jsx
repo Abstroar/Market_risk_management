@@ -19,9 +19,9 @@ const StockDetailsPanel = ({ selectedStock }) => {
       
       // Get current stock data
       const response = await axios.get(`http://localhost:8000/api/fetch-stock/${symbol}`);
-      
-      if (response.data && response.data.status === 'success') {
-        const currentData = response.data.data;
+      console.log(response.data);
+      if (response.data && response.data.current_price) {
+        const currentData = response.data;
         setStockDetails({
           currentPrice: parseFloat(currentData.current_price),
           open: parseFloat(currentData.open_price),
@@ -62,10 +62,10 @@ const StockDetailsPanel = ({ selectedStock }) => {
       <div className="bg-white/5 rounded-lg p-4 w-full">
         <h3 className="text-lg font-semibold text-white mb-4">Stock Graph</h3>
         <div className="w-full h-[300px]">
-          <StockGraph symbol={selectedStock} />
+        <StockGraph symbol={selectedStock} />
         </div>
       </div>
-
+      
       {/* Details - 50% width */}
       <div className="bg-white/5 rounded-lg p-4 w-full">
         <h3 className="text-lg font-semibold text-white mb-4">Stock Details</h3>

@@ -18,8 +18,8 @@ const StockGraph = ({ symbol = 'AMZN' }) => {
   const [error, setError] = useState(null);
   const [selectedTimeRange, setSelectedTimeRange] = useState('1Y');
   const [dateRange, setDateRange] = useState({
-    start: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    end: new Date().toISOString().split('T')[0]
+    start: "2024-05-01",
+    end: "2025-05-01"
   });
   const [aggregation, setAggregation] = useState('monthly');
 
@@ -27,22 +27,27 @@ const StockGraph = ({ symbol = 'AMZN' }) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get(`http://localhost:8000/api/stock-data`, {
+      const response = await axios.get(`http://localhost:8000/stocks-graph`, {
         params: {
-          symbol,
           start_date: dateRange.start,
-          end_date: dateRange.end,
+          symbol:symbol,
+          end_date: dateRange.end,  
           aggregate: aggregation
         }
       });
-      setStockData(response.data.data);
+      console.log('API Response:', response.data)
+      await setStockData(response.data);
     } catch (err) {
       console.error('Error fetching stock data:', err);
       setError(err.response?.data?.detail || 'Failed to fetch stock data');
     } finally {
       setLoading(false);
     }
+    
   };
+  useEffect(() => {
+    console.log('Updated stockData:', stockData);
+  }, [stockData]);
 
   useEffect(() => {
     fetchStockData();
@@ -145,32 +150,32 @@ const StockGraph = ({ symbol = 'AMZN' }) => {
           {symbol} - Stock Price Over Time
         </h2>
         <div className="flex-1 bg-white/5 rounded-lg p-4">
-          <ResponsiveContainer width="100%" height={400}>
-            <LineChart data={stockData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#ffffff20" />
-              <XAxis 
-                dataKey="date" 
-                stroke="#ffffff80"
-                tickFormatter={(date) => new Date(date).toLocaleDateString()}
-              />
-              <YAxis 
-                stroke="#ffffff80"
-                tickFormatter={(value) => `$${value.toFixed(2)}`}
-              />
-              <Tooltip 
-                formatter={(value) => [`$${value.toFixed(2)}`, 'Price']}
-                labelFormatter={(date) => new Date(date).toLocaleDateString()}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="avg_close" 
-                stroke="#00ffff" 
-                strokeWidth={2} 
-                dot={false}
-                activeDot={{ r: 4 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+        <ResponsiveContainer width="100%" height={400}>
+  <LineChart data={stockData}>
+    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff20" />
+    <XAxis 
+      dataKey="date" 
+      stroke="#ffffff80"
+      tickFormatter={(date) => new Date(date).toLocaleDateString()}
+    />
+    <YAxis 
+      stroke="#ffffff80"
+      tickFormatter={(value) => `$${value.toFixed(2)}`}
+    />
+    <Tooltip 
+      formatter={(value) => [`$${value.toFixed(2)}`, 'Price']}
+      labelFormatter={(date) => new Date(date).toLocaleDateString()}
+    />
+    <Line 
+      type="monotone" 
+      dataKey="avg_close" 
+      stroke="#00ffff" 
+      strokeWidth={2} 
+      dot={false}
+      activeDot={{ r: 4 }}
+    />
+  </LineChart>
+</ResponsiveContainer>
         </div>
 
         {/* Controls Section */}

@@ -1,8 +1,10 @@
+version: '3.8'
+
 services:
   backend:
     build: ./backend
     ports:
-      - "8001:8000"
+      - "8000:8000"
     volumes:
       - ./backend:/app
       - /app/.venv  # Exclude virtualenv from host
